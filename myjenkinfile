@@ -1,0 +1,35 @@
+pipeline {
+    agent any
+    environment {
+        AWS_REGION = "us-east-1"
+        LAMBDA_FUNCTION_NAME = "my-lambda-function"
+        LAMBDA_HANDLER = "index.handler"
+        LAMBDA_RUNTIME = "nodejs14.x"
+        LAMBDA_ROLE_ARN = "arn:aws:iam::1234567890:role/lambda-role"
+        LAMBDA_CODE_PATH = "./lambda-function.zip"
+    }
+    stages {
+        stage('Terraform Init') {
+            steps {
+                sh 'terraform init'
+            }
+        }
+        stage('Terraform Plan') {
+            steps {
+                sh 'terraform plan'
+            }
+        }
+        stage('Terraform Apply') {
+            steps {
+                sh 'terraform apply --auto-approve'
+            }
+        }
+        stage('Deploy Lambda Function') {
+            steps {
+                sh 'zip -r ${LAMBDA_CODE_PATH} lambda-function/*'
+                sh 'aws lambda create-function --function-name ${LAMBDA_FUNCTION_NAME} --runtime ${LAMBDA_RUNTIME} --role ${LAMBDA_ROLE_ARN} --handler ${LAMBDA_HANDLER} --zip-file fileb://${LAMBDA_CODE_PATH}'
+                sh 'aws lambda update-function-code --function-name ${LAMBDA_FUNCTION_NAME} --zip-file fileb://${LAMBDA_CODE_PATH}'
+            }
+        }
+    }
+}
